@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "journal-cli"
 version = "0.1.0"
 description = "Command-line client for the journal API."
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "click",
     "requests",
@@ -16,4 +16,4 @@ dependencies = [
 journal = "main:cli"
 
 [tool.setuptools]
-py-modules = ["main", "health"]
+py-modules = ["main", "journal_commands", "auth"]
