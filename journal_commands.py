@@ -1,7 +1,7 @@
 import click
 import requests
 
-from auth import load_token, save_token
+from auth import clear_token, load_token, save_token
 
 def api_error(e: requests.RequestException) -> click.ClickException:
     return click.ClickException(e.response.json()["detail"])
@@ -29,6 +29,24 @@ def login(ctx: click.Context, username: str, password: str):
         raise api_error(e)
     save_token(res.json()["access_token"])
     print("Login succesful.")
+
+@click.command()
+def logout():
+    clear_token()
+    print("Logged out.")
+
+@click.command()
+@click.pass_context
+def list(ctx: click.Context):
+    url = f"{ctx.obj['api_url']}/api/journal"
+    headers = {"Authorization": f"Bearer {load_token()}"}
+    try:
+        res = requests.get(url, headers=headers, timeout=5)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        raise api_error(e)
+    for entry in res.json():
+        print(f"{entry['id']}: {entry['title']}")
 
 @click.command()
 @click.argument("journal_id", type=int)

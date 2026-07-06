@@ -1,7 +1,17 @@
 import click
 import requests
 
-from journal_commands import api_error, create, delete, get, login, replace, update
+from journal_commands import (
+    api_error,
+    create,
+    delete,
+    get,
+    list,
+    login,
+    logout,
+    replace,
+    update,
+)
 
 @click.group()
 @click.version_option()
@@ -28,12 +38,8 @@ def health(ctx: click.Context):
         raise api_error(e)
     print(f"Status: {res.json()['status']}")
 
-cli.add_command(get)
-cli.add_command(login)
-cli.add_command(create)
-cli.add_command(delete)
-cli.add_command(replace)
-cli.add_command(update)
+for command in (get, list, login, logout, create, delete, replace, update):
+    cli.add_command(command)
 
 if __name__ == "__main__":
     cli()

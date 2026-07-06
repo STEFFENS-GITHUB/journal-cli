@@ -10,3 +10,6 @@ def save_token(token: str) -> None:
 
 def load_token() -> str:
     return json.loads(CONFIG_PATH.read_text())["access_token"]
+
+def clear_token() -> None:
+    save_token("")
