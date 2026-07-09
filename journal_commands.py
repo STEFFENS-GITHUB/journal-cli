@@ -49,6 +49,34 @@ def list(ctx: click.Context):
         print(f"{entry['id']}: {entry['title']}")
 
 @click.command()
+@click.pass_context
+def index(ctx: click.Context):
+    url = f"{ctx.obj['api_url']}/api/journal/index"
+    after_id = 0
+    page_size = 50
+    while True:
+        try:
+            res = requests.get(url, params={"after_id": after_id}, timeout=5)
+            res.raise_for_status()
+        except requests.RequestException as e:
+            raise api_error(e)
+        entries = res.json()
+        if not entries:
+            if after_id == 0:
+                print("No entries found.")
+            break
+        for entry in entries:
+            print(f"{entry['id']}: {entry['title']}")
+        after_id = entries[-1]["id"]
+        if len(entries) < page_size:
+            break
+        print("Show next page? [Y/n] ", end="", flush=True)
+        key = click.getchar()
+        print(key)
+        if key.lower() == "n":
+            break
+
+@click.command()
 @click.argument("journal_id", type=int)
 @click.pass_context
 def get(ctx: click.Context, journal_id: int):

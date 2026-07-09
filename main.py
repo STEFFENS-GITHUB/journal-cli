@@ -6,6 +6,7 @@ from journal_commands import (
     create,
     delete,
     get,
+    index,
     list,
     login,
     logout,
@@ -38,7 +39,7 @@ def health(ctx: click.Context):
         raise api_error(e)
     print(f"Status: {res.json()['status']}")
 
-for command in (get, list, login, logout, create, delete, replace, update):
+for command in (get, list, login, logout, create, delete, replace, update, index):
     cli.add_command(command)
 
 if __name__ == "__main__":
