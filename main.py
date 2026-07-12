@@ -1,7 +1,7 @@
 import click
 import requests
 
-from journal_commands import (
+from commands import (
     api_error,
     create,
     delete,
@@ -10,6 +10,7 @@ from journal_commands import (
     list,
     login,
     logout,
+    register,
     replace,
     update,
 )
@@ -39,7 +40,7 @@ def health(ctx: click.Context):
         raise api_error(e)
     print(f"Status: {res.json()['status']}")
 
-for command in (get, list, login, logout, create, delete, replace, update, index):
+for command in (get, list, login, logout, register, create, delete, replace, update, index):
     cli.add_command(command)
 
 if __name__ == "__main__":

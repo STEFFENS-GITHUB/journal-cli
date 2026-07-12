@@ -31,6 +31,31 @@ def login(ctx: click.Context, username: str, password: str):
     print("Login succesful.")
 
 @click.command()
+@click.option("--username", "-u", prompt=True, help="API username.")
+@click.option("--email", "-e", prompt=True, help="API email address.")
+@click.option(
+    "--password",
+    "-p",
+    prompt=True,
+    hide_input=True,
+    confirmation_prompt=True,
+    help="API password.",
+)
+@click.pass_context
+def register(ctx: click.Context, username: str, email: str, password: str):
+    url = f"{ctx.obj['api_url']}/register"
+    try:
+        res = requests.post(
+            url,
+            json={"username": username, "email": email, "password": password},
+            timeout=5,
+        )
+        res.raise_for_status()
+    except requests.RequestException as e:
+        raise api_error(e)
+    print(f"Registered user {res.json()['username']}.")
+
+@click.command()
 def logout():
     clear_token()
     print("Logged out.")

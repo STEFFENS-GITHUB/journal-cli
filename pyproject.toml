@@ -16,4 +16,4 @@ dependencies = [
 journal = "main:cli"
 
 [tool.setuptools]
-py-modules = ["main", "journal_commands", "auth"]
+py-modules = ["main", "commands", "auth"]
