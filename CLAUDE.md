@@ -1,6 +1,6 @@
 ## Architecture
 
-This repository builds a python FastAPI application into a docker image and pushes it to dockerhub.
+This repository builds a cli tool that connects to a journal application FastAPI backend.
 
 ## Important Commands
 
@@ -9,3 +9,4 @@ This repository builds a python FastAPI application into a docker image and push
 ## Important Past Mistakes to Avoid
 
 Be concise with answers, dont drag on.
+Explain what you are doing before proposing changes.
