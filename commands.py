@@ -1,10 +1,34 @@
 import click
 import requests
 
-from auth import clear_token, load_token, save_token
+from auth import clear_tokens, load_tokens, save_tokens
 
 def api_error(e: requests.RequestException) -> click.ClickException:
     return click.ClickException(e.response.json()["detail"])
+
+def api_request(ctx: click.Context, method: str, path: str, **kwargs) -> requests.Response:
+    url = f"{ctx.obj['api_url']}{path}"
+    tokens = load_tokens()
+    headers = {"Authorization": f"Bearer {tokens.get('access_token', '')}"}
+    try:
+        res = requests.request(method, url, headers=headers, timeout=5, **kwargs)
+        if res.status_code == 401 and tokens.get("refresh_token"):
+            refresh_res = requests.post(
+                f"{ctx.obj['api_url']}/refresh-token",
+                json={"refresh_token": tokens["refresh_token"]},
+                timeout=5,
+            )
+            if refresh_res.ok:
+                data = refresh_res.json()
+                save_tokens(data["access_token"], data["refresh_token"])
+                headers = {"Authorization": f"Bearer {data['access_token']}"}
+                res = requests.request(method, url, headers=headers, timeout=5, **kwargs)
+            else:
+                clear_tokens()
+        res.raise_for_status()
+    except requests.RequestException as e:
+        raise api_error(e)
+    return res
 
 @click.command()
 @click.option("--username", "-u", prompt=True, help="API username.")
@@ -27,7 +51,8 @@ def login(ctx: click.Context, username: str, password: str):
         res.raise_for_status()
     except requests.RequestException as e:
         raise api_error(e)
-    save_token(res.json()["access_token"])
+    data = res.json()
+    save_tokens(data["access_token"], data["refresh_token"])
     print("Login succesful.")
 
 @click.command()
@@ -56,20 +81,25 @@ def register(ctx: click.Context, username: str, email: str, password: str):
     print(f"Registered user {res.json()['username']}.")
 
 @click.command()
-def logout():
-    clear_token()
+@click.pass_context
+def logout(ctx: click.Context):
+    refresh_token = load_tokens().get("refresh_token")
+    if refresh_token:
+        try:
+            requests.post(
+                f"{ctx.obj['api_url']}/logout",
+                json={"refresh_token": refresh_token},
+                timeout=5,
+            )
+        except requests.RequestException:
+            pass
+    clear_tokens()
     print("Logged out.")
 
 @click.command()
 @click.pass_context
 def list(ctx: click.Context):
-    url = f"{ctx.obj['api_url']}/api/journal"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.get(url, headers=headers, timeout=5)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    res = api_request(ctx, "get", "/api/journal")
     for entry in res.json():
         print(f"{entry['id']}: {entry['title']}")
 
@@ -105,13 +135,7 @@ def index(ctx: click.Context):
 @click.argument("journal_id", type=int)
 @click.pass_context
 def get(ctx: click.Context, journal_id: int):
-    url = f"{ctx.obj['api_url']}/api/journal/{journal_id}"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.get(url, headers=headers, timeout=5)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    res = api_request(ctx, "get", f"/api/journal/{journal_id}")
     data = res.json()
     print(f"Title: {data['title']}")
     print(f"Body: {data['body']}")
@@ -120,13 +144,7 @@ def get(ctx: click.Context, journal_id: int):
 @click.argument("journal_id", type=int)
 @click.pass_context
 def delete(ctx: click.Context, journal_id: int):
-    url = f"{ctx.obj['api_url']}/api/journal/{journal_id}"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.delete(url, headers=headers, timeout=5)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    api_request(ctx, "delete", f"/api/journal/{journal_id}")
     print(f"Deleted entry {journal_id}")
 
 @click.command()
@@ -134,18 +152,7 @@ def delete(ctx: click.Context, journal_id: int):
 @click.option("--body", prompt=True, help="Body of the journal entry.")
 @click.pass_context
 def create(ctx: click.Context, title: str, body: str):
-    url = f"{ctx.obj['api_url']}/api/journal/create"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.post(
-            url,
-            json={"title": title, "body": body},
-            headers=headers,
-            timeout=5,
-        )
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    res = api_request(ctx, "post", "/api/journal/create", json={"title": title, "body": body})
     data = res.json()
     print(f"Created entry {data['id']}: {data['title']}")
 
@@ -160,18 +167,7 @@ def replace(
     title: str,
     body: str,
 ):
-    url = f"{ctx.obj['api_url']}/api/journal/{journal_id}"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.put(
-            url,
-            json={"title": title, "body": body},
-            headers=headers,
-            timeout=5,
-        )
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    res = api_request(ctx, "put", f"/api/journal/{journal_id}", json={"title": title, "body": body})
     data = res.json()
     print(f"Replaced entry {data['id']}: {data['title']}")
 
@@ -201,12 +197,6 @@ def update(
     payload = {k: v for k, v in {"title": title, "body": body}.items() if v}
     if not payload:
         raise click.UsageError("Provide at least one of --title or --body.")
-    url = f"{ctx.obj['api_url']}/api/journal/{journal_id}"
-    headers = {"Authorization": f"Bearer {load_token()}"}
-    try:
-        res = requests.patch(url, json=payload, headers=headers, timeout=5)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise api_error(e)
+    res = api_request(ctx, "patch", f"/api/journal/{journal_id}", json=payload)
     data = res.json()
     print(f"Updated entry {data['id']}: {data['title']}")
