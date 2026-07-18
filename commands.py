@@ -50,7 +50,10 @@ def login(ctx: click.Context, username: str, password: str):
         )
         res.raise_for_status()
     except requests.RequestException as e:
-        raise api_error(e)
+        err = api_error(e)
+        if e.response is not None and e.response.status_code == 403:
+            err.message += " Run `journal resend-verify-email` to request a new verification email."
+        raise err
     data = res.json()
     save_tokens(data["access_token"], data["refresh_token"])
     print("Login succesful.")
@@ -79,6 +82,19 @@ def register(ctx: click.Context, username: str, email: str, password: str):
     except requests.RequestException as e:
         raise api_error(e)
     print(f"Registered user {res.json()['username']}.")
+    print("Check your inbox for a verification email; run `journal resend-verify-email` if it doesn't arrive.")
+
+@click.command()
+@click.option("--email", "-e", prompt=True, help="Email address used at registration.")
+@click.pass_context
+def resend_verify_email(ctx: click.Context, email: str):
+    url = f"{ctx.obj['api_url']}/resend-verify-email"
+    try:
+        res = requests.post(url, json={"email": email}, timeout=5)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        raise api_error(e)
+    print(res.json()["detail"])
 
 @click.command()
 @click.pass_context

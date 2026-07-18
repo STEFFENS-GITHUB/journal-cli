@@ -12,6 +12,7 @@ from commands import (
     logout,
     register,
     replace,
+    resend_verify_email,
     update,
 )
 
@@ -40,7 +41,7 @@ def health(ctx: click.Context):
         raise api_error(e)
     print(f"Status: {res.json()['status']}")
 
-for command in (get, list, login, logout, register, create, delete, replace, update, index):
+for command in (get, list, login, logout, register, create, delete, replace, update, index, resend_verify_email):
     cli.add_command(command)
 
 if __name__ == "__main__":
