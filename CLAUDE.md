@@ -1,6 +1,9 @@
 ## Architecture
 
 This repository builds a cli tool that connects to a journal application FastAPI backend.
+Associated repos: (they likely live one directory up, if not, remote in GitHub)
+journal-api
+journal-worker
 
 ## Important Commands
 
